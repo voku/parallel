@@ -3,7 +3,6 @@
 namespace Amp\Parallel\Worker;
 
 use Amp\Loop;
-use Amp\Promise;
 
 const LOOP_POOL_IDENTIFIER = Pool::class;
 const LOOP_FACTORY_IDENTIFIER = WorkerFactory::class;
@@ -26,24 +25,25 @@ function pool(Pool $pool = null): Pool {
     }
 
     Loop::setState(LOOP_POOL_IDENTIFIER, $pool);
+
     return $pool;
 }
 
 /**
  * Enqueues a task to be executed by the global worker pool.
  *
- * @param \Amp\Parallel\Worker\Task $task The task to enqueue.
+ * @param Task $task The task to enqueue.
  *
- * @return \Amp\Promise<mixed>
+ * @return mixed
  */
-function enqueue(Task $task): Promise {
+function enqueue(Task $task) {
     return pool()->enqueue($task);
 }
 
 /**
  * Gets a worker from the global worker pool.
  *
- * @return \Amp\Parallel\Worker\Worker
+ * @return Worker
  */
 function get(): Worker {
     return pool()->get();
@@ -52,7 +52,7 @@ function get(): Worker {
 /**
  * Creates a worker using the global worker factory. The worker is automatically started.
  *
- * @return \Amp\Parallel\Worker\Worker
+ * @return Worker
  */
 function create(): Worker {
     return factory()->create();
@@ -75,5 +75,6 @@ function factory(WorkerFactory $factory = null): WorkerFactory {
         $factory = new DefaultWorkerFactory;
     }
     Loop::setState(LOOP_FACTORY_IDENTIFIER, $factory);
+
     return $factory;
 }

@@ -2,19 +2,16 @@
 
 namespace Amp\Parallel\Sync;
 
-use Amp\CallableMaker;
 use Amp\Parser\Parser;
 
 class ChannelParser extends Parser {
-    use CallableMaker;
-
-    const HEADER_LENGTH = 5;
+    private const HEADER_LENGTH = 5;
 
     /**
      * @param callable(mixed $data) Callback invoked when data is parsed.
      */
     public function __construct(callable $callback) {
-        parent::__construct(self::parser($callback, self::callableFromStaticMethod("errorHandler")));
+        parent::__construct(self::parser($callback, \Closure::fromCallable([self::class, "errorHandler"])));
     }
 
     /**

@@ -1,16 +1,13 @@
 language: php
 
 php:
-  - 7.0
-  - 7.1
-  - 7.2
   - nightly
 
 sudo: false
 
 matrix:
-  allow_failures:
-    - php: nightly
+  # allow_failures:
+  #  - php: nightly
   fast_finish: true
 
 env:
@@ -20,6 +17,7 @@ before_install:
   - phpenv config-rm xdebug.ini || echo "No xdebug config."
 
 install:
+  - travis/install-async.sh
   - composer update -n --prefer-dist
   # pthreads is now only supported on PHP 7.2+
   - if [ "$TRAVIS_PHP_VERSION" != "7.0" ] && [ "$TRAVIS_PHP_VERSION" != "7.1" ]; then
@@ -29,12 +27,7 @@ install:
   - chmod +x coveralls.phar
 
 script:
-    # phpdbg prints out of memory with pthreads enabled
-  - if [ "$TRAVIS_PHP_VERSION" = "7.0" ] || [ "$TRAVIS_PHP_VERSION" = "7.1" ]; then
-      phpdbg -qrr vendor/bin/phpunit --coverage-text --coverage-clover build/logs/clover.xml;
-    else
-      vendor/bin/phpunit;
-    fi
+  - vendor/bin/phpunit
   - PHP_CS_FIXER_IGNORE_ENV=1 php vendor/bin/php-cs-fixer --diff --dry-run -v fix
 
 after_script:

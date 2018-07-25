@@ -4,18 +4,17 @@ namespace Amp\Parallel\Worker\Internal;
 
 use Amp\Parallel\Worker\Task;
 use Amp\Parallel\Worker\Worker;
-use Amp\Promise;
 
 /** @internal */
 class PooledWorker implements Worker {
     /** @var callable */
     private $push;
 
-    /** @var \Amp\Parallel\Worker\Worker */
+    /** @var Worker */
     private $worker;
 
     /**
-     * @param \Amp\Parallel\Worker\Worker $worker
+     * @param Worker   $worker
      * @param callable $push Callable to push the worker back into the queue.
      */
     public function __construct(Worker $worker, callable $push) {
@@ -47,21 +46,21 @@ class PooledWorker implements Worker {
     /**
      * {@inheritdoc}
      */
-    public function enqueue(Task $task): Promise {
+    public function enqueue(Task $task) {
         return $this->worker->enqueue($task);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function shutdown(): Promise {
+    public function shutdown(): int {
         return $this->worker->shutdown();
     }
 
     /**
      * {@inheritdoc}
      */
-    public function kill() {
+    public function kill(): void {
         $this->worker->kill();
     }
 }

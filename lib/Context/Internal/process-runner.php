@@ -2,9 +2,7 @@
 
 namespace Amp\Parallel\Context\Internal;
 
-use Amp\Loop;
 use Amp\Parallel\Sync;
-use function Amp\call;
 
 // Doesn't exist in phpdbg...
 if (\function_exists("cli_set_process_title")) {
@@ -38,48 +36,49 @@ if (\function_exists("cli_set_process_title")) {
     require $autoloadPath;
 })();
 
-Loop::run(function () use ($argc, $argv) {
-    $channel = new Sync\ChannelledSocket(\STDIN, \STDOUT);
+$channel = new Sync\ChannelledSocket(\STDIN, \STDOUT);
 
-    // Remove this scripts path from process arguments.
-    --$argc;
-    \array_shift($argv);
+// Remove this scripts path from process arguments.
+--$argc;
+\array_shift($argv);
 
-    try {
-        // Protect current scope by requiring script within another function.
-        $callable = (function () use ($argc, $argv): callable {
-            if (!isset($argv[0])) {
-                throw new \Error("No script path given");
-            }
-
-            if (!\is_file($argv[0])) {
-                throw new \Error(\sprintf("No script found at '%s' (be sure to provide the full path to the script)", $argv[0]));
-            }
-
-            $callable = require $argv[0];
-
-            if (!\is_callable($callable)) {
-                throw new \Error(\sprintf("Script '%s' did not return a callable function", $argv[0]));
-            }
-
-            return $callable;
-        })();
-
-        $result = new Sync\ExitSuccess(yield call($callable, $channel));
-    } catch (Sync\ChannelException $exception) {
-        exit(1); // Parent context died, simply exit.
-    } catch (\Throwable $exception) {
-        $result = new Sync\ExitFailure($exception);
-    }
-
-    try {
-        try {
-            yield $channel->send($result);
-        } catch (Sync\SerializationException $exception) {
-            // Serializing the result failed. Send the reason why.
-            yield $channel->send(new Sync\ExitFailure($exception));
+try {
+    // Protect current scope by requiring script within another function.
+    $callable = (function () use ($argc, $argv): callable { // $argc isn't unused!
+        if (!isset($argv[0])) {
+            throw new \Error("No script path given");
         }
-    } catch (\Throwable $exception) {
-        exit(1); // Parent context died, simply exit.
+
+        if (!\is_file($argv[0])) {
+            throw new \Error(\sprintf("No script found at '%s' (be sure to provide the full path to the script)", $argv[0]));
+        }
+
+        $callable = require $argv[0];
+
+        if (!\is_callable($callable)) {
+            throw new \Error(\sprintf("Script '%s' did not return a callable function", $argv[0]));
+        }
+
+        return $callable;
+    })();
+
+    $result = new Sync\ExitSuccess($callable($channel));
+} catch (Sync\ChannelException $exception) {
+    exit(1); // Parent context died, simply exit.
+} catch (\Throwable $exception) {
+    $result = new Sync\ExitFailure($exception);
+}
+
+try {
+    try {
+        $channel->send($result);
+    } catch (Sync\SerializationException $exception) {
+        // Serializing the result failed. Send the reason why.
+        $channel->send(new Sync\ExitFailure($exception));
     }
-});
+} catch (Sync\ChannelException $exception) {
+    exit(1); // Parent context died, simply exit.
+} catch (\Throwable $exception) {
+    fwrite(STDERR, "Error in process-runner.php: " . $exception->getMessage() . PHP_EOL);
+    exit(2);
+}

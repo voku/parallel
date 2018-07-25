@@ -2,15 +2,13 @@
 
 namespace Amp\Parallel\Worker\Internal;
 
-use Amp\Failure;
 use Amp\Parallel\Worker\TaskError;
 use Amp\Parallel\Worker\TaskException;
-use Amp\Promise;
 
 /** @internal */
 class TaskFailure extends TaskResult {
-    const PARENT_EXCEPTION = 0;
-    const PARENT_ERROR = 1;
+    public const PARENT_EXCEPTION = 0;
+    public const PARENT_ERROR = 1;
 
     /** @var string */
     private $type;
@@ -29,6 +27,7 @@ class TaskFailure extends TaskResult {
 
     public function __construct(string $id, \Throwable $exception) {
         parent::__construct($id);
+
         $this->type = \get_class($exception);
         $this->parent = $exception instanceof \Error ? self::PARENT_ERROR : self::PARENT_EXCEPTION;
         $this->message = $exception->getMessage();
@@ -36,7 +35,7 @@ class TaskFailure extends TaskResult {
         $this->trace = $exception->getTraceAsString();
     }
 
-    public function promise(): Promise {
+    public function get() {
         switch ($this->parent) {
             case self::PARENT_ERROR:
                 $exception = new TaskError(
@@ -64,6 +63,7 @@ class TaskFailure extends TaskResult {
                 );
         }
 
-        return new Failure($exception);
+        /** @noinspection PhpUnhandledExceptionInspection */
+        throw $exception;
     }
 }

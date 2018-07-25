@@ -8,11 +8,11 @@ use Amp\Parallel\Worker\Pool;
 use Amp\Parallel\Worker\Task;
 use Amp\Parallel\Worker\WorkerFactory;
 use Amp\PHPUnit\TestCase;
-use Amp\Promise;
-use Amp\Success;
 
-class FunctionsTest extends TestCase {
-    public function testPool() {
+class FunctionsTest extends TestCase
+{
+    public function testPool(): void
+    {
         $pool = $this->createMock(Pool::class);
 
         Worker\pool($pool);
@@ -23,28 +23,24 @@ class FunctionsTest extends TestCase {
     /**
      * @depends testPool
      */
-    public function testEnqueue() {
+    public function testEnqueue(): void
+    {
         $pool = $this->createMock(Pool::class);
         $pool->method('enqueue')
-            ->will($this->returnCallback(function (Task $task): Promise {
-                return new Success($task->run($this->createMock(Environment::class)));
+            ->will($this->returnCallback(function (Task $task) {
+                return $task->run($this->createMock(Environment::class));
             }));
 
         Worker\pool($pool);
 
-        $value = 42;
-
-        $task = new TestTask($value);
-
-        $awaitable = Worker\enqueue($task);
-
-        $this->assertSame($value, Promise\wait($awaitable));
+        $this->assertSame(42, Worker\enqueue(new TestTask(42)));
     }
 
     /**
      * @depends testPool
      */
-    public function testGet() {
+    public function testGet(): void
+    {
         $pool = $this->createMock(Pool::class);
         $pool->expects($this->once())
             ->method('get')
@@ -52,10 +48,11 @@ class FunctionsTest extends TestCase {
 
         Worker\pool($pool);
 
-        $worker = Worker\get();
+        Worker\get();
     }
 
-    public function testFactory() {
+    public function testFactory(): void
+    {
         $factory = $this->createMock(WorkerFactory::class);
 
         Worker\factory($factory);
@@ -66,7 +63,8 @@ class FunctionsTest extends TestCase {
     /**
      * @depends testFactory
      */
-    public function testCreate() {
+    public function testCreate(): void
+    {
         $factory = $this->createMock(WorkerFactory::class);
         $factory->expects($this->once())
             ->method('create')
@@ -74,6 +72,6 @@ class FunctionsTest extends TestCase {
 
         Worker\factory($factory);
 
-        $worker = Worker\create();
+        Worker\create();
     }
 }

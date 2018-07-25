@@ -2,16 +2,14 @@
 
 namespace Amp\Parallel\Sync;
 
-use Amp\Promise;
-use Amp\Success;
 use Amp\Sync\ThreadedMutex;
-use function Amp\call;
 
 /**
  * A thread-safe container that shares a value between multiple threads.
  */
-class ThreadedParcel implements Parcel {
-    /** @var \Amp\Sync\ThreadedMutex */
+class ThreadedParcel implements Parcel
+{
+    /** @var ThreadedMutex */
     private $mutex;
 
     /** @var \Threaded */
@@ -22,7 +20,8 @@ class ThreadedParcel implements Parcel {
      *
      * @param mixed $value The value to store in the container.
      */
-    public function __construct($value) {
+    public function __construct($value)
+    {
         $this->mutex = new ThreadedMutex;
         $this->storage = new Internal\ParcelStorage($value);
     }
@@ -30,29 +29,29 @@ class ThreadedParcel implements Parcel {
     /**
      * {@inheritdoc}
      */
-    public function unwrap(): Promise {
-        return new Success($this->storage->get());
+    public function unwrap()
+    {
+        return $this->storage->get();
     }
 
     /**
-     * @return \Amp\Promise
+     * {@inheritdoc}
      */
-    public function synchronized(callable $callback): Promise {
-        return call(function () use ($callback) {
-            /** @var \Amp\Sync\Lock $lock */
-            $lock = yield $this->mutex->acquire();
+    public function synchronized(callable $callback)
+    {
+        /** @var \Amp\Sync\Lock $lock */
+        $lock = $this->mutex->acquire();
 
-            try {
-                $result = yield call($callback, $this->storage->get());
+        try {
+            $result = $callback($this->storage->get());
 
-                if ($result !== null) {
-                    $this->storage->set($result);
-                }
-            } finally {
-                $lock->release();
+            if ($result !== null) {
+                $this->storage->set($result);
             }
+        } finally {
+            $lock->release();
+        }
 
-            return $result;
-        });
+        return $result;
     }
 }

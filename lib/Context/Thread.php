@@ -7,7 +7,6 @@ use Amp\Parallel\Sync\ChannelException;
 use Amp\Parallel\Sync\ChannelledSocket;
 use Amp\Parallel\Sync\ExitResult;
 use Amp\Parallel\Sync\SynchronizationError;
-use Amp\Promise;
 use function Amp\call;
 
 /**
@@ -17,8 +16,9 @@ use function Amp\call;
  * maintained both in the context that creates the thread and in the thread
  * itself.
  */
-class Thread implements Context {
-    const EXIT_CHECK_FREQUENCY = 250;
+class Thread implements Context
+{
+    private const EXIT_CHECK_FREQUENCY = 250;
 
     /** @var Internal\Thread An internal thread instance. */
     private $thread;
@@ -46,7 +46,8 @@ class Thread implements Context {
      *
      * @return bool True if threading is enabled, otherwise false.
      */
-    public static function supported(): bool {
+    public static function supported(): bool
+    {
         return \extension_loaded('pthreads');
     }
 
@@ -55,11 +56,12 @@ class Thread implements Context {
      *
      * @param callable $function The callable to invoke in the thread. First argument is an instance of
      *     \Amp\Parallel\Sync\Channel.
-     * @param mixed ...$args Additional arguments to pass to the given callable.
+     * @param mixed    ...$args Additional arguments to pass to the given callable.
      *
      * @return Thread The thread object that was spawned.
      */
-    public static function run(callable $function, ...$args): self {
+    public static function run(callable $function, ...$args): self
+    {
         $thread = new self($function, ...$args);
         $thread->start();
         return $thread;
@@ -70,11 +72,12 @@ class Thread implements Context {
      *
      * @param callable $function The callable to invoke in the thread. First argument is an instance of
      *     \Amp\Parallel\Sync\Channel.
-     * @param mixed ...$args Additional arguments to pass to the given callable.
+     * @param mixed    ...$args Additional arguments to pass to the given callable.
      *
      * @throws \Error Thrown if the pthreads extension is not available.
      */
-    public function __construct(callable $function, ...$args) {
+    public function __construct(callable $function, ...$args)
+    {
         if (!self::supported()) {
             throw new \Error("The pthreads extension is required to create threads.");
         }
@@ -87,7 +90,8 @@ class Thread implements Context {
      * Returns the thread to the condition before starting. The new thread can be started and run independently of the
      * first thread.
      */
-    public function __clone() {
+    public function __clone()
+    {
         $this->thread = null;
         $this->socket = null;
         $this->channel = null;
@@ -99,7 +103,8 @@ class Thread implements Context {
      *
      * @throws \Amp\Parallel\Context\ContextException
      */
-    public function __destruct() {
+    public function __destruct()
+    {
         if (\getmypid() === $this->oid) {
             $this->kill();
         }
@@ -110,7 +115,8 @@ class Thread implements Context {
      *
      * @return bool True if the context is running, otherwise false.
      */
-    public function isRunning(): bool {
+    public function isRunning(): bool
+    {
         return $this->channel !== null;
     }
 
@@ -120,7 +126,8 @@ class Thread implements Context {
      * @throws \Amp\Parallel\Context\StatusError If the thread has already been started.
      * @throws \Amp\Parallel\Context\ContextException If starting the thread was unsuccessful.
      */
-    public function start() {
+    public function start(): void
+    {
         if ($this->oid !== 0) {
             throw new StatusError('The thread has already been started.');
         }
@@ -167,7 +174,8 @@ class Thread implements Context {
      *
      * @throws ContextException If killing the thread was unsuccessful.
      */
-    public function kill() {
+    public function kill(): void
+    {
         if ($this->thread !== null) {
             try {
                 if ($this->thread->isRunning() && !$this->thread->kill()) {
@@ -182,7 +190,8 @@ class Thread implements Context {
     /**
      * Closes channel and socket if still open.
      */
-    private function close() {
+    private function close(): void
+    {
         if ($this->channel !== null) {
             $this->channel->close();
         }
@@ -192,17 +201,17 @@ class Thread implements Context {
     }
 
     /**
-     * Gets a promise that resolves when the context ends and joins with the
-     * parent context.
+     * Joins with the parent context.
      *
-     * @return \Amp\Promise<mixed>
+     * @return mixed
      *
      * @throws StatusError Thrown if the context has not been started.
      * @throws SynchronizationError Thrown if an exit status object is not received.
      * @throws ContextException If the context stops responding.
      */
-    public function join(): Promise {
-        if ($this->channel == null || $this->thread === null) {
+    public function join()
+    {
+        if ($this->channel === null || $this->thread === null) {
             throw new StatusError('The thread has not been started or has already finished.');
         }
 
@@ -210,7 +219,7 @@ class Thread implements Context {
             Loop::enable($this->watcher);
 
             try {
-                $response = yield $this->channel->receive();
+                $response = $this->channel->receive();
 
                 if (!$response instanceof ExitResult) {
                     throw new SynchronizationError('Did not receive an exit result from thread.');
@@ -237,36 +246,36 @@ class Thread implements Context {
     /**
      * {@inheritdoc}
      */
-    public function receive(): Promise {
+    public function receive()
+    {
         if ($this->channel === null) {
             throw new StatusError('The process has not been started.');
         }
 
-        return call(function () {
-            Loop::enable($this->watcher);
+        Loop::enable($this->watcher);
 
-            try {
-                $data = yield $this->channel->receive();
-            } finally {
-                Loop::disable($this->watcher);
-            }
+        try {
+            $data = $this->channel->receive();
+        } finally {
+            Loop::disable($this->watcher);
+        }
 
-            if ($data instanceof ExitResult) {
-                $data = $data->getResult();
-                throw new SynchronizationError(\sprintf(
-                    'Thread process unexpectedly exited with result of type: %s',
-                    \is_object($data) ? \get_class($data) : \gettype($data)
-                ));
-            }
+        if ($data instanceof ExitResult) {
+            $data = $data->getResult();
+            throw new SynchronizationError(\sprintf(
+                'Thread process unexpectedly exited with result of type: %s',
+                \is_object($data) ? \get_class($data) : \gettype($data)
+            ));
+        }
 
-            return $data;
-        });
+        return $data;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function send($data): Promise {
+    public function send($data): void
+    {
         if ($this->channel === null) {
             throw new StatusError('The thread has not been started or has already finished.');
         }
@@ -275,16 +284,12 @@ class Thread implements Context {
             throw new \Error('Cannot send exit result objects.');
         }
 
-        return call(function () use ($data) {
-            Loop::enable($this->watcher);
+        Loop::enable($this->watcher);
 
-            try {
-                $result = yield $this->channel->send($data);
-            } finally {
-                Loop::disable($this->watcher);
-            }
-
-            return $result;
-        });
+        try {
+            $this->channel->send($data);
+        } finally {
+            Loop::disable($this->watcher);
+        }
     }
 }

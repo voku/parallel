@@ -11,9 +11,9 @@ interface Task {
      *
      * Does not have to be a coroutine, can also be a regular function returning a value.
      *
-     * @param \Amp\Parallel\Worker\Environment
+     * @param Environment
      *
-     * @return mixed|\Amp\Promise|\Generator
+     * @return mixed
      */
     public function run(Environment $environment);
 }

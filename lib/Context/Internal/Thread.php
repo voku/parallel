@@ -9,7 +9,6 @@ use Amp\Parallel\Sync\ChannelledSocket;
 use Amp\Parallel\Sync\ExitFailure;
 use Amp\Parallel\Sync\ExitSuccess;
 use Amp\Parallel\Sync\SerializationException;
-use function Amp\call;
 
 /**
  * An internal thread that executes a given function concurrently.
@@ -17,7 +16,7 @@ use function Amp\call;
  * @internal
  */
 class Thread extends \Thread {
-    const KILL_CHECK_FREQUENCY = 250;
+    private const KILL_CHECK_FREQUENCY = 250;
 
     /** @var callable The function to execute in the thread. */
     private $function;
@@ -84,29 +83,31 @@ class Thread extends \Thread {
             return; // Thread killed while requiring autoloader, simply exit.
         }
 
-        Loop::run(function () {
-            $watcher = Loop::repeat(self::KILL_CHECK_FREQUENCY, function () {
-                if ($this->killed) {
-                    Loop::stop();
-                }
-            });
-            Loop::unreference($watcher);
-
-            try {
-                $channel = new ChannelledSocket($this->socket, $this->socket);
-                yield from $this->execute($channel);
-            } catch (\Throwable $exception) {
-                return; // Parent context exited or destroyed thread, no need to continue.
-            } finally {
-                Loop::cancel($watcher);
+        $watcher = Loop::repeat(self::KILL_CHECK_FREQUENCY, function () {
+            if ($this->killed) {
+                Loop::stop();
             }
         });
+
+        Loop::unreference($watcher);
+
+        try {
+            $channel = new ChannelledSocket($this->socket, $this->socket);
+            $this->execute($channel);
+        } catch (\Throwable $exception) {
+            return; // Parent context exited or destroyed thread, no need to continue.
+        } finally {
+            Loop::cancel($watcher);
+        }
+
+        // TOOD: Await loop end (https://github.com/concurrent-php/task/issues/24)
+        Loop::run();
     }
 
     /**
      * Sets a local variable to true so the running event loop can check for a kill signal.
      */
-    public function kill() {
+    public function kill(): bool {
         return $this->killed = true;
     }
 
@@ -119,7 +120,7 @@ class Thread extends \Thread {
      */
     private function execute(Channel $channel): \Generator {
         try {
-            $result = new ExitSuccess(yield call($this->function, $channel, ...$this->args));
+            $result = new ExitSuccess(($this->function)($channel, ...$this->args));
         } catch (\Throwable $exception) {
             $result = new ExitFailure($exception);
         }
@@ -131,10 +132,10 @@ class Thread extends \Thread {
         // Attempt to return the result.
         try {
             try {
-                yield $channel->send($result);
+                $channel->send($result);
             } catch (SerializationException $exception) {
                 // Serializing the result failed. Send the reason why.
-                yield $channel->send(new ExitFailure($exception));
+                $channel->send(new ExitFailure($exception));
             }
         } catch (ChannelException $exception) {
             // The result was not sendable! The parent context must have died or killed the context.

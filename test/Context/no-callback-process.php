@@ -1,7 +1,8 @@
 <?php
 
-use Amp\Parallel\Sync\Channel;
-
-function (Channel $channel) {
+function ()
+{
     return 1;
-};
+}
+
+;

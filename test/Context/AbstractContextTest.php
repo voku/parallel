@@ -3,19 +3,22 @@
 namespace Amp\Parallel\Test\Context;
 
 use Amp\Loop;
+use Amp\Parallel\Context\Context;
+use Amp\Parallel\Context\ContextException;
+use Amp\Parallel\Context\StatusError;
 use Amp\Parallel\Sync\Channel;
+use Amp\Parallel\Sync\ChannelException;
 use Amp\Parallel\Sync\ExitSuccess;
+use Amp\Parallel\Sync\PanicError;
+use Amp\Parallel\Sync\SynchronizationError;
 use Amp\PHPUnit\TestCase;
 
-abstract class AbstractContextTest extends TestCase {
-    /**
-     * @param callable $function
-     *
-     * @return \Amp\Parallel\Context\Context
-     */
-    abstract public function createContext(callable $function);
+abstract class AbstractContextTest extends TestCase
+{
+    abstract public function createContext(callable $function): Context;
 
-    public function testIsRunning() {
+    public function testIsRunning(): void
+    {
         Loop::run(function () {
             $context = $this->createContext(function () {
                 usleep(100);
@@ -27,13 +30,14 @@ abstract class AbstractContextTest extends TestCase {
 
             $this->assertTrue($context->isRunning());
 
-            yield $context->join();
+            $context->join();
 
             $this->assertFalse($context->isRunning());
         });
     }
 
-    public function testKill() {
+    public function testKill(): void
+    {
         $context = $this->createContext(function () {
             usleep(1e6);
         });
@@ -45,22 +49,22 @@ abstract class AbstractContextTest extends TestCase {
         $this->assertFalse($context->isRunning());
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Context\StatusError
-     */
-    public function testStartWhileRunningThrowsError() {
+    public function testStartWhileRunningThrowsError(): void
+    {
         $context = $this->createContext(function () {
             usleep(100);
         });
 
         $context->start();
+
+        $this->expectException(StatusError::class);
         $context->start();
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Context\StatusError
-     */
-    public function testStartMultipleTimesThrowsError() {
+    public function testStartMultipleTimesThrowsError(): void
+    {
+        $this->expectException(StatusError::class);
+
         $this->assertRunTimeGreaterThan(function () {
             Loop::run(function () {
                 $context = $this->createContext(function () {
@@ -68,43 +72,42 @@ abstract class AbstractContextTest extends TestCase {
                 });
 
                 $context->start();
-                yield $context->join();
+                $context->join();
 
                 $context->start();
-                yield $context->join();
+                $context->join();
             });
         }, 2000);
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Sync\PanicError
-     */
-    public function testExceptionInContextPanics() {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                throw new \Exception('Exception in fork.');
-            });
+    public function testExceptionInContextPanics(): void
+    {
+        $this->expectException(PanicError::class);
 
-            $context->start();
-            yield $context->join();
+        $context = $this->createContext(function () {
+            throw new \Exception('Exception in fork.');
         });
+
+        $context->start();
+        $context->join();
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Sync\PanicError
-     */
-    public function testReturnUnserializableDataPanics() {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                return yield function () {};
-            });
+    public function testReturnUnserializableDataPanics(): void
+    {
+        $this->expectException(PanicError::class);
 
-            $context->start();
-            yield $context->join();
+        $context = $this->createContext(function () {
+            return function () {
+                // do nothing
+            };
         });
+
+        $context->start();
+        $context->join();
     }
 
-    public function testJoinWaitsForChild() {
+    public function testJoinWaitsForChild(): void
+    {
         $this->assertRunTimeGreaterThan(function () {
             Loop::run(function () {
                 $context = $this->createContext(function () {
@@ -112,175 +115,168 @@ abstract class AbstractContextTest extends TestCase {
                 });
 
                 $context->start();
-                yield $context->join();
+                $context->join();
             });
         }, 1000);
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Context\StatusError
-     */
-    public function testJoinWithoutStartThrowsError() {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                usleep(100);
-            });
-
-            yield $context->join();
+    public function testJoinWithoutStartThrowsError(): void
+    {
+        $context = $this->createContext(function () {
+            usleep(100);
         });
+
+        $this->expectException(StatusError::class);
+        $context->join();
     }
 
-    public function testJoinResolvesWithContextReturn() {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                return 42;
-            });
-
-            $context->start();
-            $this->assertSame(42, yield $context->join());
+    public function testJoinResolvesWithContextReturn(): void
+    {
+        $context = $this->createContext(function () {
+            return 42;
         });
+
+        $context->start();
+        $this->assertSame(42, $context->join());
     }
 
-    public function testSendAndReceive() {
-        Loop::run(function () {
-            $context = $this->createContext(function (Channel $channel) {
-                yield $channel->send(1);
-                $value = yield $channel->receive();
-                return $value;
-            });
+    public function testSendAndReceive(): void
+    {
+        $context = $this->createContext(function (Channel $channel) {
+            $channel->send(1);
 
-            $value = 42;
-
-            $context->start();
-            $this->assertSame(1, yield $context->receive());
-            yield $context->send($value);
-            $this->assertSame($value, yield $context->join());
+            return $channel->receive();
         });
+
+        $value = 42;
+
+        $context->start();
+        $this->assertSame(1, $context->receive());
+
+        $context->send($value);
+        $this->assertSame($value, $context->join());
     }
 
     /**
      * @depends testSendAndReceive
-     * @expectedException \Amp\Parallel\Sync\SynchronizationError
      */
-    public function testJoinWhenContextSendingData() {
-        Loop::run(function () {
-            $context = $this->createContext(function (Channel $channel) {
-                yield $channel->send(0);
-                return 42;
-            });
+    public function testJoinWhenContextSendingData(): void
+    {
+        $this->expectException(SynchronizationError::class);
 
-            $context->start();
-            $value = yield $context->join();
+        $context = $this->createContext(function (Channel $channel) {
+            yield $channel->send(0);
+
+            return 42;
         });
+
+        $context->start();
+        $context->join();
     }
 
     /**
      * @depends testSendAndReceive
-     * @expectedException \Amp\Parallel\Context\StatusError
      */
-    public function testReceiveBeforeContextHasStarted() {
-        Loop::run(function () {
-            $context = $this->createContext(function (Channel $channel) {
-                yield $channel->send(0);
-                return 42;
-            });
-
-            $value = yield $context->receive();
+    public function testReceiveBeforeContextHasStarted(): void
+    {
+        $context = $this->createContext(function (Channel $channel) {
+            yield $channel->send(0);
+            return 42;
         });
+
+        $this->expectException(StatusError::class);
+        $context->receive();
     }
 
     /**
      * @depends testSendAndReceive
-     * @expectedException \Amp\Parallel\Context\StatusError
      */
-    public function testSendBeforeContextHasStarted() {
-        Loop::run(function () {
-            $context = $this->createContext(function (Channel $channel) {
-                yield $channel->send(0);
-                return 42;
-            });
+    public function testSendBeforeContextHasStarted(): void
+    {
+        $context = $this->createContext(function (Channel $channel) {
+            $channel->send(0);
 
-            yield $context->send(0);
+            return 42;
         });
+
+        $this->expectException(StatusError::class);
+        $context->send(0);
     }
 
     /**
      * @depends testSendAndReceive
-     * @expectedException \Amp\Parallel\Sync\SynchronizationError
      */
-    public function testReceiveWhenContextHasReturned() {
-        Loop::run(function () {
-            $context = $this->createContext(function (Channel $channel) {
-                yield $channel->send(0);
-                return 42;
-            });
+    public function testReceiveWhenContextHasReturned(): void
+    {
+        $context = $this->createContext(function (Channel $channel) {
+            $channel->send(0);
 
-            $context->start();
-            $value = yield $context->receive();
-            $value = yield $context->receive();
-            $value = yield $context->join();
+            return 42;
         });
+
+        $context->start();
+
+        $this->expectException(SynchronizationError::class);
+
+        $context->receive();
+        $context->receive();
+        $context->join();
     }
 
     /**
      * @depends testSendAndReceive
-     * @expectedException \Error
      */
-    public function testSendExitResult() {
-        Loop::run(function () {
-            $context = $this->createContext(function (Channel $channel) {
-                $value = yield $channel->receive();
-                return 42;
-            });
+    public function testSendExitResult(): void
+    {
+        $this->expectException(\Error::class);
 
-            $context->start();
-            yield $context->send(new ExitSuccess(0));
-            $value = yield $context->join();
+        $context = $this->createContext(function (Channel $channel) {
+            $channel->receive();
+
+            return 42;
         });
+
+        $context->start();
+        $context->send(new ExitSuccess(0));
+        $context->join();
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Context\ContextException
-     * @expectedExceptionMessage The context stopped responding
-     */
-    public function testExitingContextOnJoin() {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                exit;
-            });
+    public function testExitingContextOnJoin(): void
+    {
+        $this->expectException(ContextException::class);
+        $this->expectExceptionMessage('The context stopped responding');
 
-            $context->start();
-            $value = yield $context->join();
+        $context = $this->createContext(function () {
+            exit;
         });
+
+        $context->start();
+        $context->join();
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Sync\ChannelException
-     * @expectedExceptionMessage The channel closed unexpectedly
-     */
-    public function testExitingContextOnReceive() {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                exit;
-            });
+    public function testExitingContextOnReceive(): void
+    {
+        $this->expectException(ChannelException::class);
+        $this->expectExceptionMessage('The channel closed unexpectedly');
 
-            $context->start();
-            $value = yield $context->receive();
+        $context = $this->createContext(function () {
+            exit;
         });
+
+        $context->start();
+        $context->receive();
     }
 
-    /**
-     * @expectedException \Amp\Parallel\Sync\ChannelException
-     * @expectedExceptionMessage Sending on the channel failed
-     */
-    public function testExitingContextOnSend() {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                exit;
-            });
+    public function testExitingContextOnSend(): void
+    {
+        $this->expectException(ChannelException::class);
+        $this->expectExceptionMessage('Sending on the channel failed');
 
-            $context->start();
-            yield $context->send(\str_pad("", 1024 * 1024, "-"));
+        $context = $this->createContext(function () {
+            exit;
         });
+
+        $context->start();
+        $context->send(\str_pad("", 1024 * 1024, "-"));
     }
 }

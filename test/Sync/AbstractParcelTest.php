@@ -2,54 +2,43 @@
 
 namespace Amp\Parallel\Test\Sync;
 
+use Amp\Parallel\Sync\Parcel;
 use Amp\PHPUnit\TestCase;
-use Amp\Promise;
 
-abstract class AbstractParcelTest extends TestCase {
-    /**
-     * @return \Amp\Parallel\Sync\Parcel
-     */
-    abstract protected function createParcel($value);
+abstract class AbstractParcelTest extends TestCase
+{
+    abstract protected function createParcel($value): Parcel;
 
-    public function testUnwrapIsOfCorrectType() {
+    public function testUnwrapIsOfCorrectType(): void
+    {
         $object = $this->createParcel(new \stdClass);
-        $this->assertInstanceOf('stdClass', Promise\wait($object->unwrap()));
+        $this->assertInstanceOf(\stdClass::class, $object->unwrap());
     }
 
-    public function testUnwrapIsEqual() {
+    public function testUnwrapIsEqual(): void
+    {
         $object = new \stdClass;
         $shared = $this->createParcel($object);
-        $this->assertEquals($object, Promise\wait($shared->unwrap()));
+        $this->assertEquals($object, $shared->unwrap());
     }
 
     /**
      * @depends testUnwrapIsEqual
      */
-    public function testSynchronized() {
+    public function testSynchronized(): void
+    {
         $parcel = $this->createParcel(0);
 
-        $awaitable = $parcel->synchronized(function ($value) {
+        $this->assertSame(1, $parcel->synchronized(function ($value) {
             $this->assertSame(0, $value);
             usleep(10000);
             return 1;
-        });
+        }));
 
-        $callback = $this->createCallback(1);
-        $callback->method('__invoke')
-            ->with($this->identicalTo(null), $this->identicalTo(1));
-
-        $awaitable->onResolve($callback);
-
-        $awaitable = $parcel->synchronized(function ($value) {
+        $this->assertSame(2, $parcel->synchronized(function ($value) {
             $this->assertSame(1, $value);
             usleep(10000);
             return 2;
-        });
-
-        $callback = $this->createCallback(1);
-        $callback->method('__invoke')
-            ->with($this->identicalTo(null), $this->identicalTo(2));
-
-        $awaitable->onResolve($callback);
+        }));
     }
 }

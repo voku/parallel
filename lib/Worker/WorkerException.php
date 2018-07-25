@@ -4,7 +4,7 @@ namespace Amp\Parallel\Worker;
 
 class WorkerException extends \Exception {
     /**
-     * @param string $message
+     * @param string          $message
      * @param \Throwable|null $previous
      */
     public function __construct(string $message, \Throwable $previous = null) {

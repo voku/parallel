@@ -3,7 +3,7 @@
 namespace Amp\Parallel\Context;
 
 use Amp\Parallel\Sync\Channel;
-use Amp\Promise;
+use Amp\Parallel\Sync\PanicError;
 
 interface Context extends Channel {
     /**
@@ -14,18 +14,18 @@ interface Context extends Channel {
     /**
      * Starts the execution context.
      */
-    public function start();
+    public function start(): void;
 
     /**
      * Immediately kills the context.
      */
-    public function kill();
+    public function kill(): void;
 
     /**
-     * @return \Amp\Promise<mixed> Resolves with the returned from the context.
+     * @return mixed Return value from the context.
      *
-     * @throws \Amp\Parallel\Context\ContextException If the context dies unexpectedly.
-     * @throws \Amp\Parallel\Sync\PanicError If the context throws an uncaught exception.
+     * @throws ContextException If the context dies unexpectedly.
+     * @throws PanicError If the context throws an uncaught exception.
      */
-    public function join(): Promise;
+    public function join();
 }

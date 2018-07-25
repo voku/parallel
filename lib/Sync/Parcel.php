@@ -2,8 +2,6 @@
 
 namespace Amp\Parallel\Sync;
 
-use Amp\Promise;
-
 /**
  * A parcel object for sharing data across execution contexts.
  *
@@ -17,7 +15,8 @@ use Amp\Promise;
  * methods to acquire a lock for exclusive access to the parcel first before
  * accessing the contained value.
  */
-interface Parcel {
+interface Parcel
+{
     /**
      * Asynchronously invokes a callback while maintaining an exclusive lock on the parcel. The current value of the
      * parcel is provided as the first argument to the callback function.
@@ -25,13 +24,12 @@ interface Parcel {
      * @param callable $callback The synchronized callback to invoke. The parcel value is given as the single argument
      *     to the callback function. The callback may be a regular function or a coroutine.
      *
-     * @return \Amp\Promise<mixed> Resolves with the return value of $callback or fails if $callback
-     *     throws an exception.
+     * @return mixed Resolves with the return value of $callback or fails if $callback throws an exception.
      */
-    public function synchronized(callable $callback): Promise;
+    public function synchronized(callable $callback);
 
     /**
-     * @return \Amp\Promise<mixed> A promise for the value inside the parcel.
+     * @return mixed Value inside the parcel.
      */
-    public function unwrap(): Promise;
+    public function unwrap();
 }

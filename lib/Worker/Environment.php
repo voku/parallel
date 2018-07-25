@@ -19,8 +19,8 @@ interface Environment extends \ArrayAccess {
 
     /**
      * @param string $key
-     * @param mixed $value Using null for the value deletes the key.
-     * @param int $ttl Number of seconds until data is automatically deleted. Use 0 for unlimited TTL.
+     * @param mixed  $value Using null for the value deletes the key.
+     * @param int    $ttl Number of seconds until data is automatically deleted. Use 0 for unlimited TTL.
      */
     public function set(string $key, $value, int $ttl = null);
 

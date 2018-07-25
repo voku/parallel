@@ -4,9 +4,8 @@ namespace Amp\Parallel\Worker\Internal;
 
 use Amp\Parallel\Sync;
 use Amp\Parallel\Worker;
-use Amp\Promise;
 
-return function (Sync\Channel $channel) use ($argv): Promise {
+return function (Sync\Channel $channel) use ($argv) {
     if (!\defined("AMP_WORKER")) {
         \define("AMP_WORKER", "amp-worker");
     }

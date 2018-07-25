@@ -5,7 +5,8 @@ namespace Amp\Parallel\Worker;
 use Amp\Loop;
 use Amp\Struct;
 
-class BasicEnvironment implements Environment {
+class BasicEnvironment implements Environment
+{
     /** @var array */
     private $data = [];
 
@@ -15,31 +16,33 @@ class BasicEnvironment implements Environment {
     /** @var string */
     private $timer;
 
-    public function __construct() {
-        $this->queue = new \SplPriorityQueue;
+    public function __construct()
+    {
+        $this->queue = $queue = new \SplPriorityQueue;
+        $data = &$this->data;
 
-        $this->timer = Loop::repeat(1000, function () {
+        $this->timer = Loop::repeat(1000, static function ($watcherId) use ($queue, &$data) {
             $time = \time();
-            while (!$this->queue->isEmpty()) {
-                list($key, $expiration) = $this->queue->top();
+            while (!$queue->isEmpty()) {
+                [$key, $expiration] = $queue->top();
 
-                if (!isset($this->data[$key])) {
+                if (!isset($data[$key])) {
                     // Item removed.
-                    $this->queue->extract();
+                    $queue->extract();
                     continue;
                 }
 
-                $struct = $this->data[$key];
+                $struct = $data[$key];
 
                 if ($struct->expire === 0) {
                     // Item was set again without a TTL.
-                    $this->queue->extract();
+                    $queue->extract();
                     continue;
                 }
 
                 if ($struct->expire !== $expiration) {
                     // Expiration changed or TTL updated.
-                    $this->queue->extract();
+                    $queue->extract();
                     continue;
                 }
 
@@ -48,13 +51,13 @@ class BasicEnvironment implements Environment {
                     break;
                 }
 
-                unset($this->data[$key]);
+                unset($data[$key]);
 
-                $this->queue->extract();
+                $queue->extract();
             }
 
-            if ($this->queue->isEmpty()) {
-                Loop::disable($this->timer);
+            if ($queue->isEmpty()) {
+                Loop::disable($watcherId);
             }
         });
 
@@ -62,12 +65,18 @@ class BasicEnvironment implements Environment {
         Loop::unreference($this->timer);
     }
 
+    public function __destruct()
+    {
+        Loop::cancel($this->timer);
+    }
+
     /**
      * @param string $key
      *
      * @return bool
      */
-    public function exists(string $key): bool {
+    public function exists(string $key): bool
+    {
         return isset($this->data[$key]);
     }
 
@@ -76,7 +85,8 @@ class BasicEnvironment implements Environment {
      *
      * @return mixed|null Returns null if the key does not exist.
      */
-    public function get(string $key) {
+    public function get(string $key)
+    {
         if (!isset($this->data[$key])) {
             return null;
         }
@@ -96,12 +106,13 @@ class BasicEnvironment implements Environment {
 
     /**
      * @param string $key
-     * @param mixed $value Using null for the value deletes the key.
-     * @param int $ttl Number of seconds until data is automatically deleted. Use null for unlimited TTL.
+     * @param mixed  $value Using null for the value deletes the key.
+     * @param int    $ttl Number of seconds until data is automatically deleted. Use null for unlimited TTL.
      *
      * @throws \Error If the time-to-live is not a positive integer.
      */
-    public function set(string $key, $value, int $ttl = null) {
+    public function set(string $key, $value, int $ttl = null)
+    {
         if ($value === null) {
             $this->delete($key);
             return;
@@ -111,7 +122,8 @@ class BasicEnvironment implements Environment {
             throw new \Error("The time-to-live must be a positive integer or null");
         }
 
-        $struct = new class {
+        $struct = new class
+        {
             use Struct;
             public $data;
             public $expire = 0;
@@ -134,7 +146,8 @@ class BasicEnvironment implements Environment {
     /**
      * @param string $key
      */
-    public function delete(string $key) {
+    public function delete(string $key)
+    {
         unset($this->data[$key]);
     }
 
@@ -145,7 +158,8 @@ class BasicEnvironment implements Environment {
      *
      * @return bool
      */
-    public function offsetExists($key) {
+    public function offsetExists($key)
+    {
         return $this->exists($key);
     }
 
@@ -156,7 +170,8 @@ class BasicEnvironment implements Environment {
      *
      * @return mixed
      */
-    public function offsetGet($key) {
+    public function offsetGet($key)
+    {
         return $this->get($key);
     }
 
@@ -164,9 +179,10 @@ class BasicEnvironment implements Environment {
      * Alias of set() with $ttl = null.
      *
      * @param string $key
-     * @param mixed $value
+     * @param mixed  $value
      */
-    public function offsetSet($key, $value) {
+    public function offsetSet($key, $value)
+    {
         $this->set($key, $value);
     }
 
@@ -175,14 +191,16 @@ class BasicEnvironment implements Environment {
      *
      * @param string $key
      */
-    public function offsetUnset($key) {
+    public function offsetUnset($key)
+    {
         $this->delete($key);
     }
 
     /**
      * Removes all values.
      */
-    public function clear() {
+    public function clear()
+    {
         $this->data = [];
 
         Loop::disable($this->timer);

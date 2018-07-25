@@ -2,20 +2,22 @@
 
 namespace Amp\Parallel\Worker;
 
+use Amp\Parallel\Context\StatusError;
+
 /**
  * An interface for worker pools.
  */
 interface Pool extends Worker {
     /** @var int The default maximum pool size. */
-    const DEFAULT_MAX_SIZE = 32;
+    public const DEFAULT_MAX_SIZE = 32;
 
     /**
      * Gets a worker from the pool. The worker is marked as busy and will only be reused if the pool runs out of
      * idle workers. The worker will be automatically marked as idle once no references to the returned worker remain.
      *
-     * @return \Amp\Parallel\Worker\Worker
+     * @return Worker
      *
-     * @throws \Amp\Parallel\Context\StatusError If the queue is not running.
+     * @throws StatusError If the queue is not running.
      */
     public function get(): Worker;
 

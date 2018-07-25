@@ -2,67 +2,101 @@
 
 namespace Amp\Parallel\Test\Context;
 
+use function Amp\delay;
 use Amp\Parallel\Context\Process;
+use Amp\Parallel\Sync\PanicError;
 use Amp\PHPUnit\TestCase;
-use Amp\Promise;
 
-class ProcessTest extends TestCase {
-    public function testBasicProcess() {
+class ProcessTest extends TestCase
+{
+    public function testBasicProcess(): void
+    {
         $process = new Process([
             __DIR__ . "/test-process.php",
-            "Test"
+            "Test",
         ]);
         $process->start();
-        $this->assertSame("Test", Promise\wait($process->join()));
+
+        $this->assertSame("Test", $process->join());
     }
 
     /**
-     * @expectedException \Amp\Parallel\Sync\PanicError
-     * @expectedExceptionMessage No string provided
+     * @depends testBasicProcess
      */
-    public function testFailingProcess() {
+    public function testFailingProcess(): void
+    {
         $process = new Process(__DIR__ . "/test-process.php");
         $process->start();
-        Promise\wait($process->join());
+
+        delay(1000);
+
+        $this->expectException(PanicError::class);
+        $this->expectExceptionMessage('No string provided');
+
+        $process->join();
     }
 
     /**
-     * @expectedException \Amp\Parallel\Sync\PanicError
-     * @expectedExceptionMessage No script found at 'test-process.php'
+     * @depends testBasicProcess
      */
-    public function testInvalidScriptPath() {
+    public function testInvalidScriptPath(): void
+    {
         $process = new Process("test-process.php");
         $process->start();
-        Promise\wait($process->join());
+
+        delay(1000);
+
+        $this->expectException(PanicError::class);
+        $this->expectExceptionMessage('No script found at \'test-process.php\'');
+
+        $process->join();
     }
 
     /**
-     * @expectedException \Amp\Parallel\Sync\PanicError
-     * @expectedExceptionMessage The given data cannot be sent because it is not serializable
+     * @depends testBasicProcess
      */
-    public function testInvalidResult() {
+    public function testInvalidResult(): void
+    {
         $process = new Process(__DIR__ . "/invalid-result-process.php");
         $process->start();
-        var_dump(Promise\wait($process->join()));
+
+        delay(1000);
+
+        $this->expectException(PanicError::class);
+        $this->expectExceptionMessage('The given data cannot be sent because it is not serializable');
+
+        $process->join();
     }
 
     /**
-     * @expectedException \Amp\Parallel\Sync\PanicError
-     * @expectedExceptionMessage did not return a callable function
+     * @depends testBasicProcess
      */
-    public function testNoCallbackReturned() {
+    public function testNoCallbackReturned(): void
+    {
         $process = new Process(__DIR__ . "/no-callback-process.php");
         $process->start();
-        var_dump(Promise\wait($process->join()));
+
+        delay(1000);
+
+        $this->expectException(PanicError::class);
+        $this->expectExceptionMessage('did not return a callable function');
+
+        $process->join();
     }
 
     /**
-     * @expectedException \Amp\Parallel\Sync\PanicError
-     * @expectedExceptionMessage Uncaught ParseError in execution context
+     * @depends testBasicProcess
      */
-    public function testParseError() {
+    public function testParseError(): void
+    {
         $process = new Process(__DIR__ . "/parse-error-process.inc");
         $process->start();
-        var_dump(Promise\wait($process->join()));
+
+        delay(1000);
+
+        $this->expectException(PanicError::class);
+        $this->expectExceptionMessage('Uncaught ParseError in execution context');
+
+        $process->join();
     }
 }
