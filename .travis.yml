@@ -19,10 +19,8 @@ before_install:
 install:
   - travis/install-async.sh
   - composer update -n --prefer-dist
-  # pthreads is now only supported on PHP 7.2+
-  - if [ "$TRAVIS_PHP_VERSION" != "7.0" ] && [ "$TRAVIS_PHP_VERSION" != "7.1" ]; then
-      travis/install-pthreads.sh;
-    fi
+  # pthreads currently doesn't compile cleanly
+  # - travis/install-pthreads.sh
   - wget https://github.com/php-coveralls/php-coveralls/releases/download/v1.0.2/coveralls.phar
   - chmod +x coveralls.phar
 
