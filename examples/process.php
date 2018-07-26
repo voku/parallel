@@ -3,9 +3,9 @@
 
 require \dirname(__DIR__) . '/vendor/autoload.php';
 
-use function Amp\delay;
 use Amp\Loop;
 use Amp\Parallel\Context\Process;
+use function Amp\delay;
 
 $timer = Loop::repeat(1000, function () {
     static $i;

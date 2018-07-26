@@ -4,9 +4,8 @@
 // echo, print, printf, etc. in this script are written to STDERR of the parent.
 // $argc and $argv are available in this process as any other cli PHP script.
 
-use function Amp\delay;
-use Amp\Parallel\Sync\Channel;
 use Amp\Parallel\Sync\SharedMemoryParcel;
+use function Amp\delay;
 
 return function () use ($argv): \Generator {
     if (!isset($argv[1])) {
