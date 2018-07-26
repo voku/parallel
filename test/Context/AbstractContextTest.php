@@ -2,7 +2,6 @@
 
 namespace Amp\Parallel\Test\Context;
 
-use Amp\Loop;
 use Amp\Parallel\Context\Context;
 use Amp\Parallel\Context\ContextException;
 use Amp\Parallel\Context\StatusError;
@@ -19,21 +18,19 @@ abstract class AbstractContextTest extends TestCase
 
     public function testIsRunning(): void
     {
-        Loop::run(function () {
-            $context = $this->createContext(function () {
-                \usleep(100);
-            });
-
-            $this->assertFalse($context->isRunning());
-
-            $context->start();
-
-            $this->assertTrue($context->isRunning());
-
-            $context->join();
-
-            $this->assertFalse($context->isRunning());
+        $context = $this->createContext(function () {
+            \usleep(100);
         });
+
+        $this->assertFalse($context->isRunning());
+
+        $context->start();
+
+        $this->assertTrue($context->isRunning());
+
+        $context->join();
+
+        $this->assertFalse($context->isRunning());
     }
 
     public function testKill(): void
@@ -66,17 +63,15 @@ abstract class AbstractContextTest extends TestCase
         $this->expectException(StatusError::class);
 
         $this->assertRunTimeGreaterThan(function () {
-            Loop::run(function () {
-                $context = $this->createContext(function () {
-                    \sleep(1);
-                });
-
-                $context->start();
-                $context->join();
-
-                $context->start();
-                $context->join();
+            $context = $this->createContext(function () {
+                \sleep(1);
             });
+
+            $context->start();
+            $context->join();
+
+            $context->start();
+            $context->join();
         }, 2000);
     }
 
@@ -109,14 +104,12 @@ abstract class AbstractContextTest extends TestCase
     public function testJoinWaitsForChild(): void
     {
         $this->assertRunTimeGreaterThan(function () {
-            Loop::run(function () {
-                $context = $this->createContext(function () {
-                    \sleep(1);
-                });
-
-                $context->start();
-                $context->join();
+            $context = $this->createContext(function () {
+                \sleep(1);
             });
+
+            $context->start();
+            $context->join();
         }, 1000);
     }
 

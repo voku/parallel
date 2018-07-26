@@ -2,7 +2,6 @@
 
 namespace Amp\Parallel\Test\Worker;
 
-use Amp\Loop;
 use Amp\Parallel\Worker\Pool;
 use Amp\Parallel\Worker\Task;
 use Amp\PHPUnit\TestCase;
@@ -65,25 +64,23 @@ abstract class AbstractPoolTest extends TestCase
 
     public function testEnqueueMultiple(): void
     {
-        Loop::run(function () {
-            $pool = $this->createPool();
+        $pool = $this->createPool();
 
-            $values = AsyncTask::await(all([
-                AsyncTask::async(function () use ($pool) {
-                    return $pool->enqueue(new TestTask(42));
-                }),
-                AsyncTask::async(function () use ($pool) {
-                    return $pool->enqueue(new TestTask(56));
-                }),
-                AsyncTask::async(function () use ($pool) {
-                    return $pool->enqueue(new TestTask(72));
-                }),
-            ]));
+        $values = AsyncTask::await(all([
+            AsyncTask::async(function () use ($pool) {
+                return $pool->enqueue(new TestTask(42));
+            }),
+            AsyncTask::async(function () use ($pool) {
+                return $pool->enqueue(new TestTask(56));
+            }),
+            AsyncTask::async(function () use ($pool) {
+                return $pool->enqueue(new TestTask(72));
+            }),
+        ]));
 
-            $this->assertEquals([42, 56, 72], $values);
+        $this->assertEquals([42, 56, 72], $values);
 
-            $pool->shutdown();
-        });
+        $pool->shutdown();
     }
 
     public function testKill(): void
