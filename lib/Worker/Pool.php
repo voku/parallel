@@ -7,7 +7,8 @@ use Amp\Parallel\Context\StatusError;
 /**
  * An interface for worker pools.
  */
-interface Pool extends Worker {
+interface Pool extends Worker
+{
     /** @var int The default maximum pool size. */
     public const DEFAULT_MAX_SIZE = 32;
 

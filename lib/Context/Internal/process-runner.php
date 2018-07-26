@@ -79,6 +79,6 @@ try {
 } catch (Sync\ChannelException $exception) {
     exit(1); // Parent context died, simply exit.
 } catch (\Throwable $exception) {
-    fwrite(STDERR, "Error in process-runner.php: " . $exception->getMessage() . PHP_EOL);
+    \fwrite(STDERR, "Error in process-runner.php: " . $exception->getMessage() . PHP_EOL);
     exit(2);
 }

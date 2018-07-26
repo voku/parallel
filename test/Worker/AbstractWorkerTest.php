@@ -135,8 +135,7 @@ abstract class AbstractWorkerTest extends TestCase
         $worker = $this->createWorker();
 
         try {
-            $worker->enqueue(new class implements Task
-            { // Anonymous classes are not serializable.
+            $worker->enqueue(new class implements Task { // Anonymous classes are not serializable.
                 public function run(Environment $environment)
                 {
                 }
@@ -155,8 +154,7 @@ abstract class AbstractWorkerTest extends TestCase
 
         AsyncTask::async(function () use ($worker) {
             // Anonymous classes are not serializable.
-            $task = new class implements Task
-            {
+            $task = new class implements Task {
                 public function run(Environment $environment)
                 {
                 }

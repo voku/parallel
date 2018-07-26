@@ -1,8 +1,7 @@
 <?php
 
 return function () {
-    return new class
-    {
+    return new class {
         private function __sleep()
         {
         }

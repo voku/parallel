@@ -69,7 +69,7 @@ class ChannelledSocketTest extends TestCase
         $a = new ChannelledSocket($left, $left);
         $b = new ChannelledSocket($right, $right);
 
-        fwrite($left, pack('L', 10) . '1234567890');
+        \fwrite($left, \pack('L', 10) . '1234567890');
 
         $this->expectException(ChannelException::class);
         $b->receive();

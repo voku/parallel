@@ -21,7 +21,7 @@ abstract class AbstractContextTest extends TestCase
     {
         Loop::run(function () {
             $context = $this->createContext(function () {
-                usleep(100);
+                \usleep(100);
             });
 
             $this->assertFalse($context->isRunning());
@@ -39,7 +39,7 @@ abstract class AbstractContextTest extends TestCase
     public function testKill(): void
     {
         $context = $this->createContext(function () {
-            usleep(1e6);
+            \usleep(1e6);
         });
 
         $context->start();
@@ -52,7 +52,7 @@ abstract class AbstractContextTest extends TestCase
     public function testStartWhileRunningThrowsError(): void
     {
         $context = $this->createContext(function () {
-            usleep(100);
+            \usleep(100);
         });
 
         $context->start();
@@ -68,7 +68,7 @@ abstract class AbstractContextTest extends TestCase
         $this->assertRunTimeGreaterThan(function () {
             Loop::run(function () {
                 $context = $this->createContext(function () {
-                    sleep(1);
+                    \sleep(1);
                 });
 
                 $context->start();
@@ -111,7 +111,7 @@ abstract class AbstractContextTest extends TestCase
         $this->assertRunTimeGreaterThan(function () {
             Loop::run(function () {
                 $context = $this->createContext(function () {
-                    sleep(1);
+                    \sleep(1);
                 });
 
                 $context->start();
@@ -123,7 +123,7 @@ abstract class AbstractContextTest extends TestCase
     public function testJoinWithoutStartThrowsError(): void
     {
         $context = $this->createContext(function () {
-            usleep(100);
+            \usleep(100);
         });
 
         $this->expectException(StatusError::class);

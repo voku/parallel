@@ -122,8 +122,7 @@ class BasicEnvironment implements Environment
             throw new \Error("The time-to-live must be a positive integer or null");
         }
 
-        $struct = new class
-        {
+        $struct = new class {
             use Struct;
             public $data;
             public $expire = 0;

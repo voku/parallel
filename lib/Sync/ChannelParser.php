@@ -4,13 +4,15 @@ namespace Amp\Parallel\Sync;
 
 use Amp\Parser\Parser;
 
-class ChannelParser extends Parser {
+class ChannelParser extends Parser
+{
     private const HEADER_LENGTH = 5;
 
     /**
      * @param callable(mixed $data) Callback invoked when data is parsed.
      */
-    public function __construct(callable $callback) {
+    public function __construct(callable $callback)
+    {
         parent::__construct(self::parser($callback, \Closure::fromCallable([self::class, "errorHandler"])));
     }
 
@@ -21,7 +23,8 @@ class ChannelParser extends Parser {
      *
      * @throws \Amp\Parallel\Sync\SerializationException
      */
-    public function encode($data): string {
+    public function encode($data): string
+    {
         try {
             $data = \serialize($data);
         } catch (\Throwable $exception) {
@@ -43,7 +46,8 @@ class ChannelParser extends Parser {
      * @throws \Amp\Parallel\Sync\ChannelException
      * @throws \Amp\Parallel\Sync\SerializationException
      */
-    private static function parser(callable $push, callable $errorHandler): \Generator {
+    private static function parser(callable $push, callable $errorHandler): \Generator
+    {
         while (true) {
             $header = yield self::HEADER_LENGTH;
             $data = \unpack("Cprefix/Llength", $header);
@@ -75,7 +79,8 @@ class ChannelParser extends Parser {
         }
     }
 
-    private static function errorHandler($errno, $errstr, $errfile, $errline) {
+    private static function errorHandler($errno, $errstr, $errfile, $errline)
+    {
         if ($errno & \error_reporting()) {
             throw new ChannelException(\sprintf(
                 'Received corrupted data. Errno: %d; %s in file %s on line %d',

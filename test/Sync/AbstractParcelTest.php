@@ -31,13 +31,13 @@ abstract class AbstractParcelTest extends TestCase
 
         $this->assertSame(1, $parcel->synchronized(function ($value) {
             $this->assertSame(0, $value);
-            usleep(10000);
+            \usleep(10000);
             return 1;
         }));
 
         $this->assertSame(2, $parcel->synchronized(function ($value) {
             $this->assertSame(1, $value);
-            usleep(10000);
+            \usleep(10000);
             return 2;
         }));
     }

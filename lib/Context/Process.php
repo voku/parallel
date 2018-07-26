@@ -13,7 +13,8 @@ use Amp\Process\StatusError;
 use Concurrent\Awaitable;
 use Concurrent\Task;
 
-class Process implements Context {
+class Process implements Context
+{
     private const SCRIPT_PATH = __DIR__ . "/Internal/process-runner.php";
 
     /** @var string|null External version of SCRIPT_PATH if inside a PHAR. */
@@ -45,7 +46,8 @@ class Process implements Context {
      *
      * @return Process
      */
-    public static function run($script, string $cwd = null, array $env = [], string $binary = null): self {
+    public static function run($script, string $cwd = null, array $env = [], string $binary = null): self
+    {
         $process = new self($script, $cwd, $env, $binary);
         $process->start();
 
@@ -61,7 +63,8 @@ class Process implements Context {
      *
      * @throws \Error If the PHP binary path given cannot be found or is not executable.
      */
-    public function __construct($script, string $cwd = null, array $env = [], string $binary = null) {
+    public function __construct($script, string $cwd = null, array $env = [], string $binary = null)
+    {
         $options = [
             "html_errors" => "0",
             "display_errors" => "0",
@@ -131,7 +134,8 @@ class Process implements Context {
         $this->process = new BaseProcess($command, $cwd, $env);
     }
 
-    private static function locateBinary(): string {
+    private static function locateBinary(): string
+    {
         $executable = \strncasecmp(\PHP_OS, "WIN", 3) === 0 ? "php.exe" : "php";
 
         $paths = \array_filter(\explode(\PATH_SEPARATOR, \getenv("PATH")));
@@ -148,7 +152,8 @@ class Process implements Context {
         throw new \Error("Could not locate PHP executable binary");
     }
 
-    private function formatOptions(array $options): string {
+    private function formatOptions(array $options): string
+    {
         $result = [];
 
         foreach ($options as $option => $value) {
@@ -161,13 +166,15 @@ class Process implements Context {
     /**
      * Private method to prevent cloning.
      */
-    private function __clone() {
+    private function __clone()
+    {
     }
 
     /**
      * {@inheritdoc}
      */
-    public function start(): void {
+    public function start(): void
+    {
         if ($this->pendingStart) {
             Task::await($this->pendingStart);
             return;
@@ -192,14 +199,16 @@ class Process implements Context {
     /**
      * {@inheritdoc}
      */
-    public function isRunning(): bool {
+    public function isRunning(): bool
+    {
         return $this->process->isRunning();
     }
 
     /**
      * {@inheritdoc}
      */
-    public function receive() {
+    public function receive()
+    {
         if ($this->channel === null) {
             throw new StatusError("The process has not been started");
         }
@@ -224,7 +233,8 @@ class Process implements Context {
     /**
      * {@inheritdoc}
      */
-    public function send($data): void {
+    public function send($data): void
+    {
         if ($this->channel === null) {
             throw new StatusError("The process has not been started");
         }
@@ -239,7 +249,8 @@ class Process implements Context {
     /**
      * {@inheritdoc}
      */
-    public function join() {
+    public function join()
+    {
         if ($this->channel === null) {
             throw new StatusError("The process has not been started");
         }
@@ -277,7 +288,8 @@ class Process implements Context {
      * @throws \Amp\Process\ProcessException
      * @throws StatusError
      */
-    public function signal(int $signo): void {
+    public function signal(int $signo): void
+    {
         $this->process->signal($signo);
     }
 
@@ -290,14 +302,16 @@ class Process implements Context {
      *
      * @throws StatusError
      */
-    public function getPid(): int {
+    public function getPid(): int
+    {
         return $this->process->getPid();
     }
 
     /**
      * {@inheritdoc}
      */
-    public function kill(): void {
+    public function kill(): void
+    {
         $this->process->kill();
         $this->process->getStdin()->close();
         $this->process->getStdout()->close();

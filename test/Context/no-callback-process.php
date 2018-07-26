@@ -1,8 +1,5 @@
 <?php
 
-function ()
-{
+function () {
     return 1;
-}
-
-;
+};

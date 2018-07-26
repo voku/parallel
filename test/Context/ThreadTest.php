@@ -19,7 +19,7 @@ class ThreadTest extends AbstractContextTest
     public function testSpawnStartsThread()
     {
         $thread = Thread::run(function () {
-            usleep(100);
+            \usleep(100);
         });
 
         $this->assertTrue($thread->isRunning());

@@ -176,7 +176,7 @@ class DefaultPool implements Pool
             }
         }
 
-        return array_sum($shutdowns ? AsyncTask::await(all($shutdowns)) : []);
+        return \array_sum($shutdowns ? AsyncTask::await(all($shutdowns)) : []);
     }
 
     /**

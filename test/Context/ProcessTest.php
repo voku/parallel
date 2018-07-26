@@ -2,10 +2,10 @@
 
 namespace Amp\Parallel\Test\Context;
 
-use function Amp\delay;
 use Amp\Parallel\Context\Process;
 use Amp\Parallel\Sync\PanicError;
 use Amp\PHPUnit\TestCase;
+use function Amp\delay;
 
 class ProcessTest extends TestCase
 {

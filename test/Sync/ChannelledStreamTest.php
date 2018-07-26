@@ -16,8 +16,7 @@ class ChannelledStreamTest extends TestCase
      */
     protected function createMockStream()
     {
-        return new class implements InputStream, OutputStream
-        {
+        return new class implements InputStream, OutputStream {
             private $buffer = "";
 
             public function read(): ?string
@@ -85,7 +84,7 @@ class ChannelledStreamTest extends TestCase
         $mock = $this->createMockStream();
         $b = new ChannelledStream($mock, $mock);
 
-        $mock->write(pack('L', 10) . '1234567890');
+        $mock->write(\pack('L', 10) . '1234567890');
 
         $this->expectException(ChannelException::class);
         $b->receive();
