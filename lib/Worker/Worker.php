@@ -27,6 +27,9 @@ interface Worker
      * @param Task $task The task to enqueue.
      *
      * @return mixed Resolves with the return value of Task::run().
+     *
+     * @throws WorkerException
+     * @throws TaskException
      */
     public function enqueue(Task $task);
 
