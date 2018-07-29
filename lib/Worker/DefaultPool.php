@@ -85,7 +85,7 @@ class DefaultPool implements Pool
     public function __destruct()
     {
         if ($this->isRunning()) {
-            $this->shutdown();
+            $this->kill();
         }
     }
 
