@@ -2,6 +2,7 @@
 
 namespace Amp\Parallel\Worker;
 
+use Amp\CancellationTokenSource;
 use Amp\Coroutine;
 use Amp\Parallel\Sync\Channel;
 use Amp\Parallel\Sync\SerializationException;
@@ -10,10 +11,10 @@ use function Amp\call;
 
 final class TaskRunner
 {
-    /** @var \Amp\Parallel\Sync\Channel */
+    /** @var Channel */
     private $channel;
 
-    /** @var \Amp\Parallel\Worker\Environment */
+    /** @var Environment */
     private $environment;
 
     public function __construct(Channel $channel, Environment $environment)
@@ -25,7 +26,7 @@ final class TaskRunner
     /**
      * Runs the task runner, receiving tasks from the parent and sending the result of those tasks.
      *
-     * @return \Amp\Promise
+     * @return \Amp\Promise<null>
      */
     public function run(): Promise
     {
@@ -33,8 +34,6 @@ final class TaskRunner
     }
 
     /**
-     * @coroutine
-     *
      * @return \Generator
      */
     private function execute(): \Generator
@@ -42,14 +41,28 @@ final class TaskRunner
         $job = yield $this->channel->receive();
 
         while ($job instanceof Internal\Job) {
+            $receive = $this->channel->receive();
+            $source = new CancellationTokenSource;
+            $resolved = false;
+
             try {
-                $result = yield call([$job->getTask(), "run"], $this->environment);
-                $result = new Internal\TaskSuccess($job->getId(), $result);
+                $receive->onResolve(static function (?\Throwable $exception) use (&$resolved, $source): void {
+                    if (!$resolved) {
+                        $source->cancel($exception);
+                    }
+                });
+
+                $result = new Internal\TaskSuccess(
+                    $job->getId(),
+                    yield call([$job->getTask(), "run"], $this->environment, $source->getToken())
+                );
             } catch (\Throwable $exception) {
                 $result = new Internal\TaskFailure($job->getId(), $exception);
+            } finally {
+                $resolved = true;
             }
 
-            $job = null; // Free memory from last job.
+            $job = $source = null; // Free memory from last job.
 
             try {
                 yield $this->channel->send($result);
@@ -60,9 +73,9 @@ final class TaskRunner
 
             $result = null; // Free memory from last result.
 
-            $job = yield $this->channel->receive();
+            while (!($job = yield $receive) instanceof Internal\Job && $job !== null) {
+                $receive = $this->channel->receive();
+            }
         }
-
-        return $job;
     }
 }

@@ -2,7 +2,9 @@
 
 namespace Amp\Parallel\Worker;
 
+use Amp\CancellationToken;
 use Amp\Failure;
+use Amp\NullCancellationToken;
 use Amp\Parallel\Context\Context;
 use Amp\Parallel\Context\StatusError;
 use Amp\Parallel\Sync\ChannelException;
@@ -52,7 +54,7 @@ abstract class TaskWorker implements Worker
                         yield $pending;
                     }
 
-                    yield $context->send(0);
+                    yield $context->send(null);
                     return yield $context->join();
                 }), self::SHUTDOWN_TIMEOUT));
             } catch (\Throwable $exception) {
@@ -82,13 +84,15 @@ abstract class TaskWorker implements Worker
     /**
      * {@inheritdoc}
      */
-    public function enqueue(Task $task): Promise
+    public function enqueue(Task $task, ?CancellationToken $token = null): Promise
     {
         if ($this->exitStatus) {
             throw new StatusError("The worker has been shut down");
         }
 
-        $promise = $this->pending = call(function () use ($task): \Generator {
+        $token = $token ?? new NullCancellationToken;
+
+        $promise = $this->pending = call(function () use ($task, $token): \Generator {
             if ($this->pending) {
                 try {
                     yield $this->pending;
@@ -109,7 +113,16 @@ abstract class TaskWorker implements Worker
 
             try {
                 yield $this->context->send($job);
-                $result = yield $this->context->receive();
+
+                $id = $token->subscribe(function () use ($job) {
+                    $this->context->send($job->getId());
+                });
+
+                try {
+                    $result = yield $this->context->receive();
+                } finally {
+                    $token->unsubscribe($id);
+                }
             } catch (ChannelException $exception) {
                 try {
                     yield Promise\timeout($this->context->join(), self::ERROR_TIMEOUT);
@@ -162,7 +175,7 @@ abstract class TaskWorker implements Worker
                 yield Promise\any([$this->pending]);
             }
 
-            yield $this->context->send(0);
+            yield $this->context->send(null);
 
             try {
                 return yield Promise\timeout($this->context->join(), self::SHUTDOWN_TIMEOUT);

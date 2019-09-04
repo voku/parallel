@@ -2,6 +2,7 @@
 
 namespace Amp\Parallel\Worker;
 
+use Amp\CancellationToken;
 use Amp\Loop;
 use Amp\Promise;
 
@@ -11,9 +12,9 @@ const LOOP_FACTORY_IDENTIFIER = WorkerFactory::class;
 /**
  * Gets or sets the global worker pool.
  *
- * @param \Amp\Parallel\Worker\Pool|null $pool A worker pool instance.
+ * @param Pool|null $pool A worker pool instance.
  *
- * @return \Amp\Parallel\Worker\Pool The global worker pool instance.
+ * @return Pool The global worker pool instance.
  */
 function pool(Pool $pool = null): Pool
 {
@@ -33,20 +34,21 @@ function pool(Pool $pool = null): Pool
 /**
  * Enqueues a task to be executed by the global worker pool.
  *
- * @param Task $task The task to enqueue.
+ * @param Task                   $task The task to enqueue.
+ * @param CancellationToken|null $token
  *
  * @return Promise<mixed>
  */
-function enqueue(Task $task): Promise
+function enqueue(Task $task, ?CancellationToken $token = null): Promise
 {
-    return pool()->enqueue($task);
+    return pool()->enqueue($task, $token);
 }
 
 /**
  * Enqueues a callable to be executed by the global worker pool.
  *
  * @param callable $callable Callable needs to be serializable.
- * @param mixed    ...$args Arguments have to be serializable.
+ * @param mixed    ...$args  Arguments have to be serializable.
  *
  * @return Promise<mixed>
  */
@@ -58,7 +60,7 @@ function enqueueCallable(callable $callable, ...$args)
 /**
  * Gets a worker from the global worker pool.
  *
- * @return \Amp\Parallel\Worker\Worker
+ * @return Worker
  */
 function worker(): Worker
 {
@@ -68,7 +70,7 @@ function worker(): Worker
 /**
  * Creates a worker using the global worker factory.
  *
- * @return \Amp\Parallel\Worker\Worker
+ * @return Worker
  */
 function create(): Worker
 {
@@ -78,9 +80,9 @@ function create(): Worker
 /**
  * Gets or sets the global worker factory.
  *
- * @param \Amp\Parallel\Worker\WorkerFactory|null $factory
+ * @param WorkerFactory|null $factory
  *
- * @return \Amp\Parallel\Worker\WorkerFactory
+ * @return WorkerFactory
  */
 function factory(WorkerFactory $factory = null): WorkerFactory
 {

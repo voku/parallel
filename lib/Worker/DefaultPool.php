@@ -2,6 +2,7 @@
 
 namespace Amp\Parallel\Worker;
 
+use Amp\CancellationToken;
 use Amp\Parallel\Context\StatusError;
 use Amp\Promise;
 
@@ -145,11 +146,11 @@ final class DefaultPool implements Pool
      * @throws \Amp\Parallel\Context\StatusError If the pool has been shutdown.
      * @throws \Amp\Parallel\Worker\TaskException If the task throws an exception.
      */
-    public function enqueue(Task $task): Promise
+    public function enqueue(Task $task, ?CancellationToken $token = null): Promise
     {
         $worker = $this->pull();
 
-        $promise = $worker->enqueue($task);
+        $promise = $worker->enqueue($task, $token);
         $promise->onResolve(function () use ($worker): void {
             ($this->push)($worker);
         });
