@@ -9,6 +9,7 @@ use Amp\Parallel\Sync\SerializationException;
 use Amp\Parallel\Worker\BasicEnvironment;
 use Amp\Parallel\Worker\Environment;
 use Amp\Parallel\Worker\Task;
+use Amp\Parallel\Worker\TaskCancelledException;
 use Amp\Parallel\Worker\TaskError;
 use Amp\Parallel\Worker\TaskException;
 use Amp\Parallel\Worker\WorkerException;
@@ -310,8 +311,7 @@ abstract class AbstractWorkerTest extends AsyncTestCase
 
     public function testCancellableTask()
     {
-        $this->expectException(TaskException::class);
-        $this->expectExceptionMessage('Uncaught Amp\CancelledException in worker with message "The operation was cancelled" and code "0"');
+        $this->expectException(TaskCancelledException::class);
 
         $worker = $this->createWorker();
 
@@ -326,8 +326,8 @@ abstract class AbstractWorkerTest extends AsyncTestCase
 
         try {
             yield $worker->enqueue(new Fixtures\CancellingTask, new TimeoutCancellationToken(100));
-            $this->fail(TaskException::class . ' did not fail enqueue promise');
-        } catch (TaskException $exception) {
+            $this->fail(TaskCancelledException::class . ' did not fail enqueue promise');
+        } catch (TaskCancelledException $exception) {
             // Task should be cancelled, ignore this exception.
         }
 

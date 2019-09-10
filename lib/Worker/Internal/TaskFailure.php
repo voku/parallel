@@ -50,7 +50,7 @@ final class TaskFailure extends TaskResult
         return new Failure($this->createException());
     }
 
-    private function createException(): \Throwable
+    public function createException(): \Throwable
     {
         $previous = $this->previous ? $this->previous->createException() : null;
 

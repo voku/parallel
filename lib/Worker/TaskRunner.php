@@ -3,6 +3,7 @@
 namespace Amp\Parallel\Worker;
 
 use Amp\CancellationTokenSource;
+use Amp\CancelledException;
 use Amp\Coroutine;
 use Amp\Parallel\Sync\Channel;
 use Amp\Parallel\Sync\SerializationException;
@@ -57,7 +58,11 @@ final class TaskRunner
                     yield call([$job->getTask(), "run"], $this->environment, $source->getToken())
                 );
             } catch (\Throwable $exception) {
-                $result = new Internal\TaskFailure($job->getId(), $exception);
+                if ($exception instanceof CancelledException && $source->getToken()->isRequested()) {
+                    $result = new Internal\TaskCancelled($job->getId(), $exception);
+                } else {
+                    $result = new Internal\TaskFailure($job->getId(), $exception);
+                }
             } finally {
                 $resolved = true;
             }
@@ -74,6 +79,7 @@ final class TaskRunner
             $result = null; // Free memory from last result.
 
             while (!($job = yield $receive) instanceof Internal\Job && $job !== null) {
+                // Ignore possible cancellation request received after task resolved.
                 $receive = $this->channel->receive();
             }
         }
