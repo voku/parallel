@@ -2,6 +2,7 @@
 
 namespace Amp\Parallel\Context\Internal;
 
+use Amp\Parallel\Sync\IpcHub;
 use Amp\Parallel\Context\Process;
 use Amp\Parallel\Sync;
 use Amp\Promise;
@@ -61,19 +62,14 @@ if (\function_exists("cli_set_process_title")) {
         $key .= $chunk;
     } while (\strlen($key) < Process::KEY_LENGTH);
 
-    if (!$socket = \stream_socket_client($uri, $errno, $errstr, 5, \STREAM_CLIENT_CONNECT)) {
-        \trigger_error("Could not connect to IPC socket", E_USER_ERROR);
-        exit(1);
-    }
-
-    $channel = new Sync\ChannelledSocket($socket, $socket);
-
     try {
-        Promise\wait($channel->send($key));
+        $socket = Promise\wait(IpcHub::connect($uri, $key));
     } catch (\Throwable $exception) {
         \trigger_error("Could not send key to parent", E_USER_ERROR);
         exit(1);
     }
+
+    $channel = new Sync\ChannelledStream($socket, $socket);
 
     try {
         if (!isset($argv[0])) {
