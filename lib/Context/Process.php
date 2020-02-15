@@ -4,13 +4,15 @@ namespace Amp\Parallel\Context;
 
 use Amp\Loop;
 use Amp\Parallel\Sync\ChannelException;
-use Amp\Parallel\Sync\ChannelledSocket;
+use Amp\Parallel\Sync\ChannelledStream;
 use Amp\Parallel\Sync\ExitResult;
+use Amp\Parallel\Sync\IpcHub;
 use Amp\Parallel\Sync\SynchronizationError;
 use Amp\Process\Process as BaseProcess;
 use Amp\Process\ProcessInputStream;
 use Amp\Process\ProcessOutputStream;
 use Amp\Promise;
+use Amp\Socket\Socket;
 use Amp\TimeoutException;
 use function Amp\call;
 
@@ -28,13 +30,16 @@ final class Process implements Context
     /** @var string|null Cached path to located PHP binary. */
     private static $binaryPath;
 
-    /** @var Internal\ProcessHub */
+    /** @var IpcHub */
     private $hub;
 
     /** @var BaseProcess */
     private $process;
 
-    /** @var ChannelledSocket */
+    /** @var Socket|null */
+    private $socket;
+
+    /** @var ChannelledStream|null */
     private $channel;
 
     /**
@@ -69,8 +74,8 @@ final class Process implements Context
     public function __construct($script, string $cwd = null, array $env = [], string $binary = null)
     {
         $this->hub = Loop::getState(self::class);
-        if (!$this->hub instanceof Internal\ProcessHub) {
-            $this->hub = new Internal\ProcessHub;
+        if (!$this->hub instanceof IpcHub) {
+            $this->hub = new IpcHub(self::KEY_LENGTH);
             Loop::setState(self::class, $this->hub);
         }
 
@@ -190,9 +195,10 @@ final class Process implements Context
             try {
                 $pid = yield $this->process->start();
 
-                yield $this->process->getStdin()->write($this->hub->generateKey($pid, self::KEY_LENGTH));
+                yield $this->process->getStdin()->write($this->hub->generateKey($pid));
 
-                $this->channel = yield $this->hub->accept($pid);
+                $this->socket = yield $this->hub->accept($pid);
+                $this->channel = new ChannelledStream($this->socket, $this->socket);
 
                 return $pid;
             } catch (\Throwable $exception) {
@@ -304,7 +310,7 @@ final class Process implements Context
                 throw new SynchronizationError("Did not receive an exit result from process");
             }
 
-            $this->channel->close();
+            $this->socket->close();
 
             $code = yield $this->process->join();
             if ($code !== 0) {
@@ -394,8 +400,8 @@ final class Process implements Context
     {
         $this->process->kill();
 
-        if ($this->channel !== null) {
-            $this->channel->close();
+        if ($this->socket !== null) {
+            $this->socket->close();
         }
     }
 }

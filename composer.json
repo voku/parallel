@@ -27,6 +27,7 @@
         "amphp/parser": "^1",
         "amphp/process": "^1",
         "amphp/serialization": "^1",
+        "amphp/socket": "^1",
         "amphp/sync": "^1.0.1"
     },
     "require-dev": {

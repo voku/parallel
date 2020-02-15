@@ -4,13 +4,15 @@ namespace Amp\Parallel\Context;
 
 use Amp\Loop;
 use Amp\Parallel\Sync\ChannelException;
-use Amp\Parallel\Sync\ChannelledSocket;
+use Amp\Parallel\Sync\ChannelledStream;
 use Amp\Parallel\Sync\ExitFailure;
 use Amp\Parallel\Sync\ExitResult;
 use Amp\Parallel\Sync\ExitSuccess;
+use Amp\Parallel\Sync\IpcHub;
 use Amp\Parallel\Sync\SerializationException;
 use Amp\Parallel\Sync\SynchronizationError;
 use Amp\Promise;
+use Amp\Socket\Socket;
 use Amp\TimeoutException;
 use parallel\Runtime;
 use function Amp\call;
@@ -29,7 +31,7 @@ final class Parallel implements Context
     /** @var int Next thread ID. */
     private static $nextId = 1;
 
-    /** @var Internal\ProcessHub */
+    /** @var Internal\ParallelHub */
     private $hub;
 
     /** @var int|null */
@@ -38,7 +40,10 @@ final class Parallel implements Context
     /** @var Runtime|null */
     private $runtime;
 
-    /** @var ChannelledSocket|null A channel for communicating with the parallel thread. */
+    /** @var Socket|null */
+    private $socket;
+
+    /** @var ChannelledStream|null A channel for communicating with the parallel thread. */
     private $channel;
 
     /** @var string Script path. */
@@ -94,7 +99,7 @@ final class Parallel implements Context
 
         $this->hub = Loop::getState(self::class);
         if (!$this->hub instanceof Internal\ParallelHub) {
-            $this->hub = new Internal\ParallelHub;
+            $this->hub = new Internal\ParallelHub(self::KEY_LENGTH);
             Loop::setState(self::class, $this->hub);
         }
 
@@ -185,19 +190,14 @@ final class Parallel implements Context
             \define("AMP_CONTEXT", "parallel");
             \define("AMP_CONTEXT_ID", $id);
 
-            if (!$socket = \stream_socket_client($uri, $errno, $errstr, 5, \STREAM_CLIENT_CONNECT)) {
-                \trigger_error("Could not connect to IPC socket", E_USER_ERROR);
-                return 1;
-            }
-
-            $channel = new ChannelledSocket($socket, $socket);
-
             try {
-                Promise\wait($channel->send($key));
+                $socket = Promise\wait(IpcHub::connect($uri, $key));
             } catch (\Throwable $exception) {
                 \trigger_error("Could not send key to parent", E_USER_ERROR);
                 return 1;
             }
+
+            $channel = new ChannelledStream($socket, $socket);
 
             try {
                 Loop::unreference(Loop::repeat(self::EXIT_CHECK_FREQUENCY, function (): void {
@@ -240,7 +240,7 @@ final class Parallel implements Context
                 \trigger_error("Could not send result to parent; be sure to shutdown the child before ending the parent", E_USER_ERROR);
                 return 1;
             } finally {
-                $channel->close();
+                $socket->close();
             }
 
             return 0;
@@ -248,15 +248,16 @@ final class Parallel implements Context
         }, [
             $this->id,
             $this->hub->getUri(),
-            $this->hub->generateKey($this->id, self::KEY_LENGTH),
+            $this->hub->generateKey($this->id),
             $this->script,
             $this->args
         ]);
 
         return call(function () use ($future): \Generator {
             try {
-                $this->channel = yield $this->hub->accept($this->id);
-                $this->hub->add($this->id, $this->channel, $future);
+                $this->socket = yield $this->hub->accept($this->id);
+                $this->channel = new ChannelledStream($this->socket, $this->socket);
+                $this->hub->add($this->id, $this->socket, $future);
             } catch (\Throwable $exception) {
                 $this->kill();
                 throw new ContextException("Starting the parallel runtime failed", 0, $exception);
@@ -293,8 +294,8 @@ final class Parallel implements Context
     {
         $this->runtime = null;
 
-        if ($this->channel !== null) {
-            $this->channel->close();
+        if ($this->socket !== null) {
+            $this->socket->close();
         }
 
         $this->channel = null;
