@@ -51,6 +51,12 @@ abstract class AbstractContextTest extends AsyncTestCase
         yield $context->start();
         yield new Delayed(100);
         yield $context->send(1);
+
+        // Sending doesn't fail on Windows, so switch the expected exception to a context failure.
+        $this->expectException(ContextException::class);
+        $this->expectExceptionMessage('stopped responding');
+
+        yield $context->join();
     }
 
     public function testInvalidScriptPath()
@@ -159,5 +165,11 @@ abstract class AbstractContextTest extends AsyncTestCase
         yield $context->start();
         yield new Delayed(500);
         yield $context->send(1);
+
+        // Sending doesn't fail on Windows, so switch the expected exception to a context failure.
+        $this->expectException(ContextException::class);
+        $this->expectExceptionMessage('stopped responding');
+
+        yield $context->join();
     }
 }
