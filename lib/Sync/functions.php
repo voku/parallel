@@ -13,7 +13,7 @@ function flattenThrowableBacktrace(\Throwable $exception): array
 
     foreach ($trace as &$call) {
         unset($call['object']);
-        $call['args'] = \array_map(__NAMESPACE__ . '\\flattenArgument', $call['args']);
+        $call['args'] = \array_map(__NAMESPACE__ . '\\flattenArgument', $call['args'] ?? []);
     }
 
     return $trace;
