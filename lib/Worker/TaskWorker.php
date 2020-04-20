@@ -2,6 +2,7 @@
 
 namespace Amp\Parallel\Worker;
 
+use Amp\Delayed;
 use Amp\Failure;
 use Amp\Parallel\Context\Context;
 use Amp\Parallel\Context\StatusError;
@@ -18,6 +19,9 @@ abstract class TaskWorker implements Worker
 {
     const SHUTDOWN_TIMEOUT = 1000;
     const ERROR_TIMEOUT = 250;
+
+    /** @var Delayed */
+    private static $throttle;
 
     /** @var Context */
     private $context;
@@ -36,6 +40,10 @@ abstract class TaskWorker implements Worker
      */
     public function __construct(Context $context)
     {
+        if (self::$throttle === null) {
+            self::$throttle = new Delayed(0);
+        }
+
         if ($context->isRunning()) {
             throw new \Error("The context was already running");
         }
@@ -109,6 +117,10 @@ abstract class TaskWorker implements Worker
                 if ($this->started) {
                     throw new WorkerException("The worker crashed");
                 }
+
+                $delayed = self::$throttle;
+                self::$throttle = new Delayed(100);
+                yield $delayed;
 
                 $this->started = true;
                 yield $this->context->start();
