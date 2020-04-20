@@ -9,6 +9,7 @@ use Amp\Parallel\Sync\ChannelledSocket;
 use Amp\Promise;
 use Amp\TimeoutException;
 use function Amp\call;
+use function Amp\delay;
 
 class ProcessHub
 {
@@ -119,7 +120,9 @@ class ProcessHub
             Loop::enable($this->watcher);
 
             try {
-                $channel = yield Promise\timeout($this->acceptor[$pid]->promise(), self::PROCESS_START_TIMEOUT);
+                $promise = $this->acceptor[$pid]->promise();
+                yield delay(0);
+                $channel = yield Promise\timeout($promise, self::PROCESS_START_TIMEOUT);
             } catch (TimeoutException $exception) {
                 $key = \array_search($pid, $this->keys, true);
                 \assert(\is_string($key), "Key for {$pid} not found");
